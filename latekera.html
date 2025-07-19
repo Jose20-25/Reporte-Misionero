@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Misionero - Filial La Tekera</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+    <script src="export-utils.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        body.dark-theme {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+        body.dark-theme .container {
+            background: rgba(45, 55, 72, 0.95);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        body.dark-theme fieldset {
+            background: #374151;
+            border-color: #4b5563;
+        }
+        body.dark-theme legend {
+            background: #4b5563;
+            color: #60a5fa;
+        }
+        body.dark-theme label {
+            color: #e5e7eb;
+        }
+        body.dark-theme select, body.dark-theme input, body.dark-theme textarea {
+            background: #4b5563;
+            color: #e5e7eb;
+            border-color: #6b7280;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #06b6d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #06b6d4;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10000;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.success {
+            background: #10b981;
+        }
+        .toast.error {
+            background: #ef4444;
+        }
+        .toast.warning {
+            background: #f59e0b;
+        }
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(6,182,212,0.3);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #06b6d4, #0891b2);
+            transition: width 0.3s ease;
+        }
+        .container {
+            max-width: 900px;
+            margin: 10px auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        .header-form {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            border-radius: 16px 16px 0 0;
+            padding: 18px 24px 16px 24px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .logo {
+            max-width: 90px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px #1976d220;
+            border: 2px solid #fff;
+            background: #fff;
+        }
+        .header-title {
+            flex: 1;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .theme-toggle, .save-draft, .load-draft, .history-toggle {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            margin: 0;
+            width: auto;
+        }
+        .theme-toggle:hover, .save-draft:hover, .load-draft:hover, .history-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        .header-title {
+            flex: 1;
+        }
+        .header-title h1 {
+            margin: 0 0 4px 0;
+            font-size: 1.8em;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .header-title .subtitle {
+            font-size: 1.0em;
+            font-weight: 400;
+            color: #c7d2fe;
+        }
+        form {
+            padding: 20px 24px 24px 24px;
+        }
+        fieldset {
+            margin-bottom: 16px;
+            border-radius: 8px;
+            border: 1.5px solid #06b6d4;
+            padding: 14px 12px 8px 12px;
+            background: #fff;
+            box-shadow: 0 1px 6px #1976d210;
+        }
+        legend {
+            font-weight: bold;
+            padding: 0 8px;
+            color: #06b6d4;
+            font-size: 1.0em;
+            background: #f1f5f9;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px #1976d110;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        legend .icon {
+            font-size: 1.0em;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            color: #1e293b;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+            font-size: 13px;
+        }
+        select, input, textarea {
+            width: 100%;
+            padding: 10px 8px;
+            margin-top: 4px;
+            border-radius: 6px;
+            border: 1.5px solid #cbd5e1;
+            font-size: 14px;
+            background: #f1f5f9;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 4px #1976d110;
+        }
+        select:focus, input:focus, textarea:focus {
+            border-color: #06b6d4;
+            outline: none;
+            background: #fff;
+            box-shadow: 0 2px 8px #06b6d422;
+        }
+        button {
+            margin-top: 18px;
+            padding: 11px 0;
+            width: 100%;
+            border: none;
+            background: linear-gradient(90deg, #06b6d4 0%, #1e293b 100%);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1.13em;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 12px #06b6d422;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+            letter-spacing: 0.1px;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #1e293b 0%, #06b6d4 100%);
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 18px #06b6d433;
+        }
+        .volver {
+            margin-top: 18px;
+            background: #cbd5e1;
+            color: #222;
+            font-weight: 600;
+            box-shadow: none;
+            border-radius: 8px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .volver:hover {
+            background: #64748b;
+            color: #fff;
+        }
+        .misioneros-lista {
+            background: #f1f5f9;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 4px #06b6d411;
+        }
+        #asistenciaMisioneros > div {
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            padding: 8px;
+            box-shadow: 0 1px 4px #06b6d411;
+            border: 1.2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        #asistenciaMisioneros > div:hover {
+            background: #f1f5f9;
+            border-color: #06b6d4;
+        }
+        #asistenciaMisioneros input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            accent-color: #06b6d4;
+            cursor: pointer;
+        }
+        #asistenciaMisioneros label {
+            margin: 0;
+            font-size: 0.9em;
+            color: #374151;
+            cursor: pointer;
+            user-select: none;
+        }
+        @media (max-width: 900px) {
+            .container {
+                max-width: 95vw;
+                padding: 0;
+                margin: 6px auto;
+                border-radius: 12px;
+                box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+            }
+            .header-form {
+                padding: 16px 12px;
+            }
+            form {
+                padding: 16px 12px 20px 12px;
+            }
+            h1 {
+                font-size: 1.2em;
+                margin-bottom: 6px;
+            }
+            .logo {
+                max-width: 60px;
+                margin-bottom: 6px;
+            }
+            button, .volver {
+                font-size: 0.95em;
+                padding: 12px 0;
+                margin-top: 14px;
+            }
+            fieldset {
+                padding: 8px 12px 6px 12px;
+                margin-bottom: 12px;
+            }
+            .misioneros-lista {
+                font-size: 0.9em;
+                padding: 6px;
+                max-height: 100px;
+            }
+            input, select, textarea {
+                font-size: 0.9em;
+                padding: 10px 8px;
+            }
+            label {
+                font-size: 0.9em;
+                margin-top: 10px;
+            }
+            .stats-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+            .stat-card {
+                padding: 12px;
+            }
+            .stat-number {
+                font-size: 1.5em;
+            }
+            .stat-label {
+                font-size: 0.8em;
+            }
+            .stats-container {
+                padding: 12px 16px 0 16px !important;
+            }
+        }
+        /* Modales */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .modal-header h2 {
+            margin: 0;
+            color: #06b6d4;
+        }
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #06b6d4;
+        }
+        .history-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            background: #f8fafc;
+        }
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .history-date {
+            font-weight: bold;
+            color: #06b6d4;
+        }
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-view {
+            background: #06b6d4;
+            color: white;
+        }
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-small:hover {
+            transform: scale(1.05);
+        }
+        /* Optimización para una sola página */
+        .single-page-layout {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        /* Reducir espaciado general */
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Hacer el contenedor más compacto */
+        .compact-layout {
+            transform: scale(0.95);
+            transform-origin: top center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- Modal Historial -->
+    <div id="historialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📋 Historial de Reportes</h2>
+                <span class="close" onclick="cerrarHistorial()">&times;</span>
+            </div>
+            <div id="historialContent">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container compact-layout">
+        <div class="header-form">
+            <img src="logo/logo La Tekera.png" alt="Logo La Tekera" class="logo">
+            <div class="header-title">
+                <h1>Reporte Misionero</h1>
+                <div class="subtitle">Filial La Tekera</div>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
+                <button class="save-draft" onclick="guardarBorrador()" title="Guardar borrador">💾</button>
+                <button class="load-draft" onclick="cargarBorrador()" title="Cargar borrador">📂</button>
+                <button class="history-toggle" onclick="abrirHistorial()" title="Ver historial">📋</button>
+            </div>
+        </div>
+
+        <!-- Tarjetas de estadísticas -->
+        <div class="stats-container" style="padding: 16px 24px 0 24px;">
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalMisioneros">0</div>
+                    <div class="stat-label">Total Misioneros</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statAsistieron">0</div>
+                    <div class="stat-label">Total de Misioneros Asistieron</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="statNoAsistieron">0</div>
+                    <div class="stat-label">Total de Misioneros que No Asistieron</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="asistenciaPorc">0%</div>
+                    <div class="stat-label">% Asistencia</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="formLaTekera">
+            <fieldset>
+                <legend><span class="icon">&#128100;</span> Datos de la Filial</legend>
+                <div style="margin-bottom:6px; font-size:13px;"><strong>Pastor de La Filial:</strong> Pastor Amilcar Mejía</div>
+                <div>
+                    <label style="margin-top:0;">Fecha:</label>
+                    <input type="date" name="fecha" id="fecha" required readonly>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend><span class="icon">&#128101;</span> Datos del Grupo Misionero</legend>
+                <label>Número de Grupo Misionero:</label>
+                <select name="grupo" id="grupo" required>
+                    <option value="Grupo 1">Grupo 1</option>
+                    <option value="Grupo 2">Grupo 2</option>
+                    <option value="Grupo 3">Grupo 3</option>
+                </select>
+                <label>Encargado del Grupo:</label>
+                <input type="text" name="encargado" id="encargado" required readonly>
+                <label>Misioneros del Grupo:</label>
+                <div id="listaMisioneros" class="misioneros-lista" style="margin-bottom: 8px;"></div>
+            </fieldset>
+            <fieldset>
+                <legend><span class="icon">&#128197;</span> Asistencia y Actividades de la Filial</legend>
+                <label>Asistencia de Adultos:</label>
+                <input type="number" name="asistencia_adultos" id="asistencia_adultos" min="0" required>
+                <label>Asistencia de Niños:</label>
+                <input type="number" name="asistencia_ninos" id="asistencia_ninos" min="0" required>
+                <label>Actividad Realizada:</label>
+                <input type="text" name="actividad_filial" id="actividad_filial" required>
+                <label>Proyecto:</label>
+                <input type="text" name="proyecto_filial" id="proyecto_filial">
+            </fieldset>
+            <fieldset>
+                <legend><span class="icon">&#128221;</span> Asistencia y Actividad de los Misioneros</legend>
+                <div id="asistenciaMisioneros" style="margin-bottom: 18px;"></div>
+                <label style="margin-top:18px;">Actividad realizada por los misioneros:</label>
+                <input type="text" name="actividad_misioneros" id="actividad_misioneros" required>
+            </fieldset>
+            <button type="button" id="btnDescargarPDF" onclick="descargarReportePDF()">
+                📄 Descargar PDF
+            </button>
+        </form>
+        <button class="volver" onclick="location.href='index.html'">Volver al inicio</button>
+    </div>
+    
+    <script>
+        // --- FUNCIONES AVANZADAS ---
+        
+        // Toast notifications
+        function mostrarToast(mensaje, tipo = 'info', duracion = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensaje;
+            toast.className = `toast ${tipo}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duracion);
+        }
+
+        // Loading overlay
+        function mostrarCarga() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function ocultarCarga() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Tema oscuro/claro
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            body.classList.toggle('dark-theme');
+            const isDark = body.classList.contains('dark-theme');
+            
+            themeToggle.textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('theme-latekera', isDark ? 'dark' : 'light');
+            
+            mostrarToast(isDark ? 'Tema oscuro activado' : 'Tema claro activado', 'success');
+        }
+
+        // Cargar tema guardado
+        function cargarTema() {
+            const tema = localStorage.getItem('theme-latekera');
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (tema === 'dark') {
+                document.body.classList.add('dark-theme');
+                themeToggle.textContent = '☀️';
+            } else {
+                themeToggle.textContent = '🌙';
+            }
+        }
+
+        // Guardar borrador
+        function guardarBorrador() {
+            mostrarCarga();
+            
+            setTimeout(() => {
+                const form = document.getElementById('formLaTekera');
+                const formData = new FormData(form);
+                const borrador = {};
+                
+                for (let [key, value] of formData.entries()) {
+                    borrador[key] = value;
+                }
+                
+                // Guardar asistencia de misioneros
+                const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+                borrador.asistenciaMisioneros = [];
+                checkboxes.forEach((checkbox, idx) => {
+                    borrador.asistenciaMisioneros.push(checkbox.checked);
+                });
+                
+                localStorage.setItem('borrador-latekera', JSON.stringify(borrador));
+                
+                ocultarCarga();
+                mostrarToast('Borrador guardado exitosamente', 'success');
+            }, 500);
+        }
+
+        // Cargar borrador
+        function cargarBorrador() {
+            const borradorStr = localStorage.getItem('borrador-latekera');
+            
+            if (!borradorStr) {
+                mostrarToast('No hay borrador guardado', 'warning');
+                return;
+            }
+            
+            mostrarCarga();
+            
+            setTimeout(() => {
+                const borrador = JSON.parse(borradorStr);
+                const form = document.getElementById('formLaTekera');
+                
+                // Cargar datos del formulario
+                for (let [key, value] of Object.entries(borrador)) {
+                    if (key !== 'asistenciaMisioneros') {
+                        const field = form.querySelector(`[name="${key}"]`);
+                        if (field) field.value = value;
+                    }
+                }
+                
+                // Actualizar misioneros y asistencia
+                if (borrador.grupo) {
+                    actualizarEncargado();
+                    actualizarMisioneros();
+                    actualizarAsistenciaMisioneros();
+                    
+                    // Cargar asistencia guardada
+                    setTimeout(() => {
+                        if (borrador.asistenciaMisioneros) {
+                            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+                            checkboxes.forEach((checkbox, idx) => {
+                                if (borrador.asistenciaMisioneros[idx] !== undefined) {
+                                    checkbox.checked = borrador.asistenciaMisioneros[idx];
+                                }
+                            });
+                            actualizarTotalesAsistencia();
+                        }
+                    }, 100);
+                }
+                
+                ocultarCarga();
+                mostrarToast('Borrador cargado exitosamente', 'success');
+                actualizarEstadisticas();
+            }, 500);
+        }
+
+        // Historial de reportes
+        function guardarEnHistorial(datos) {
+            let historial = JSON.parse(localStorage.getItem('historial-latekera') || '[]');
+            
+            const reporte = {
+                id: Date.now(),
+                fecha: datos.fecha,
+                grupo: datos.grupo,
+                encargado: datos.encargado,
+                fechaCreacion: new Date().toLocaleString(),
+                datos: datos
+            };
+            
+            historial.unshift(reporte);
+            historial = historial.slice(0, 20); // Mantener solo los últimos 20
+            
+            localStorage.setItem('historial-latekera', JSON.stringify(historial));
+            actualizarEstadisticas();
+        }
+
+        function abrirHistorial() {
+            const historial = JSON.parse(localStorage.getItem('historial-latekera') || '[]');
+            const content = document.getElementById('historialContent');
+            
+            if (historial.length === 0) {
+                content.innerHTML = '<p style="text-align: center; color: #666;">No hay reportes en el historial</p>';
+            } else {
+                content.innerHTML = historial.map(item => `
+                    <div class="history-item">
+                        <div class="history-item-header">
+                            <span class="history-date">${item.fecha} - ${item.grupo}</span>
+                            <div class="history-actions">
+                                <button class="btn-small btn-view" onclick="verReporte(${item.id})">Ver</button>
+                                <button class="btn-small btn-delete" onclick="eliminarReporte(${item.id})">Eliminar</button>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.9em; color: #666;">
+                            Encargado: ${item.encargado} | Creado: ${item.fechaCreacion}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('historialModal').style.display = 'block';
+        }
+
+        function cerrarHistorial() {
+            document.getElementById('historialModal').style.display = 'none';
+        }
+
+        function verReporte(id) {
+            const historial = JSON.parse(localStorage.getItem('historial-latekera') || '[]');
+            const reporte = historial.find(r => r.id === id);
+            
+            if (reporte) {
+                alert(`Reporte del ${reporte.fecha}\\n\\nGrupo: ${reporte.datos.grupo}\\nEncargado: ${reporte.datos.encargado}\\nActividad Filial: ${reporte.datos.actividad_filial}\\nActividad Misioneros: ${reporte.datos.actividad_misioneros}`);
+            }
+        }
+
+        function eliminarReporte(id) {
+            if (confirm('¿Está seguro de eliminar este reporte del historial?')) {
+                let historial = JSON.parse(localStorage.getItem('historial-latekera') || '[]');
+                historial = historial.filter(r => r.id !== id);
+                localStorage.setItem('historial-latekera', JSON.stringify(historial));
+                abrirHistorial(); // Recargar el modal
+                actualizarEstadisticas();
+                mostrarToast('Reporte eliminado del historial', 'success');
+            }
+        }
+
+        // Estadísticas en tiempo real
+        function actualizarEstadisticas() {
+            const grupo = document.getElementById('grupo').value;
+            const misioneros = misionerosPorGrupo[grupo] || [];
+            
+            // Total misioneros
+            document.getElementById('totalMisioneros').textContent = misioneros.length;
+            
+            // Calcular asistencia directamente desde los checkboxes
+            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+            let totalAsistieron = 0;
+            let totalNoAsistieron = 0;
+            
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    totalAsistieron++;
+                } else {
+                    totalNoAsistieron++;
+                }
+            });
+            
+            const total = totalAsistieron + totalNoAsistieron;
+            const porcentaje = total > 0 ? Math.round((totalAsistieron / total) * 100) : 0;
+            
+            document.getElementById('statAsistieron').textContent = totalAsistieron;
+            document.getElementById('statNoAsistieron').textContent = totalNoAsistieron;
+            document.getElementById('asistenciaPorc').textContent = `${porcentaje}%`;
+            document.getElementById('progressFill').style.width = `${porcentaje}%`;
+        }
+
+        // Validaciones mejoradas
+        function validarFormulario() {
+            const form = document.getElementById('formLaTekera');
+            const data = new FormData(form);
+            
+            if (!data.get('actividad_filial') || !data.get('actividad_misioneros') || 
+                !data.get('asistencia_adultos') || !data.get('asistencia_ninos')) {
+                mostrarToast('Por favor complete todos los campos requeridos', 'error');
+                return false;
+            }
+            
+            // Los checkboxes no requieren validación adicional ya que pueden estar marcados o no
+            return true;
+        }
+
+        // --- FUNCIONES ORIGINALES MEJORADAS ---
+        
+        // --- PDF estilo dashboard ---
+        function descargarReportePDF() {
+            if (!validarFormulario()) return;
+            
+            mostrarCarga();
+            mostrarToast('Generando PDF...', 'info');
+            
+            const form = document.getElementById('formLaTekera');
+            const data = new FormData(form);
+            
+            const fecha = data.get('fecha');
+            const grupo = data.get('grupo');
+            const encargado = data.get('encargado');
+            const asistencia_adultos = data.get('asistencia_adultos');
+            const asistencia_ninos = data.get('asistencia_ninos');
+            const actividad_filial = data.get('actividad_filial');
+            const proyecto_filial = data.get('proyecto_filial');
+            const actividad_misioneros = data.get('actividad_misioneros');
+            const misioneros = misionerosPorGrupo[grupo];
+            const asistenciaMisioneros = [];
+            
+            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+            checkboxes.forEach((checkbox, idx) => {
+                asistenciaMisioneros.push({
+                    nombre: misioneros[idx],
+                    asistencia: checkbox.checked ? 'Asistió' : 'No asistió'
+                });
+            });
+            
+            // Separar misioneros por asistencia
+            const misionerosAsistieron = asistenciaMisioneros.filter(m => m.asistencia === 'Asistió');
+            const misionerosNoAsistieron = asistenciaMisioneros.filter(m => m.asistencia === 'No asistió');
+            
+            // Guardar en historial
+            guardarEnHistorial({
+                fecha, grupo, encargado, asistencia_adultos, asistencia_ninos,
+                actividad_filial, proyecto_filial, actividad_misioneros
+            });
+            
+            // Generar PDF directamente sin imagen
+            const jsPDF = window.jspdf.jsPDF;
+            const doc = new jsPDF();
+            
+            try {
+                // === PÁGINA 1: INFORMACIÓN GENERAL ===
+                
+                // Header profesional compacto
+                doc.setFillColor(6, 182, 212);
+                doc.rect(0, 0, 210, 35, 'F');
+                
+                // Gradiente sutil
+                doc.setFillColor(8, 145, 178);
+                doc.rect(0, 0, 210, 18, 'F');
+                
+                // Línea decorativa
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(1.5);
+                doc.line(20, 25, 190, 25);
+                
+                // Título principal
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(20);
+                doc.setTextColor(255, 255, 255);
+                doc.text('REPORTE MISIONERO', 105, 14, {align: 'center'});
+                
+                // Subtítulo y fecha
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(12);
+                doc.setTextColor(224, 242, 254);
+                doc.text('Filial La Tekera - ' + fecha, 105, 30, {align: 'center'});
+                
+                let y = 45;
+                
+                // === INFORMACIÓN GENERAL ===
+                
+                // Título de sección compacto
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(6, 182, 212);
+                doc.text('INFORMACIÓN GENERAL', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                // Información básica en dos columnas
+                doc.setFillColor(240, 249, 255);
+                doc.roundedRect(20, y, 80, 20, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(20, y, 80, 20, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(8, 145, 178);
+                doc.text('PASTOR:', 25, y + 7);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(55, 65, 81);
+                doc.text('Pastor Amilcar Mejía', 25, y + 14);
+                
+                doc.setFillColor(254, 249, 195);
+                doc.roundedRect(110, y, 80, 20, 4, 4, 'F');
+                doc.setDrawColor(180, 83, 9);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(110, y, 80, 20, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(180, 83, 9);
+                doc.text('GRUPO:', 115, y + 7);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(12);
+                doc.setTextColor(55, 65, 81);
+                doc.text(grupo, 115, y + 14);
+                
+                y += 28;
+                
+                doc.setFillColor(239, 246, 255);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'F');
+                doc.setDrawColor(59, 130, 246);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(59, 130, 246);
+                doc.text('ENCARGADO DEL GRUPO:', 25, y + 7);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(55, 65, 81);
+                doc.text(encargado, 25, y + 12);
+                
+                y += 25;
+                
+                // === ASISTENCIA DE LA FILIAL ===
+                
+                // Título de sección
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(6, 182, 212);
+                doc.text('ASISTENCIA DE LA FILIAL', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                // Estadísticas en una sola línea
+                const totalAsistencia = parseInt(asistencia_adultos || 0) + parseInt(asistencia_ninos || 0);
+                
+                doc.setFillColor(250, 250, 250);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(6, 182, 212);
+                doc.text('Adultos: ' + asistencia_adultos, 30, y + 7);
+                doc.text('Niños: ' + asistencia_ninos, 80, y + 7);
+                doc.text('Total: ' + totalAsistencia, 130, y + 7);
+                
+                y += 25;
+                
+                // === ACTIVIDADES REALIZADAS ===
+                
+                // Título de sección
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(6, 182, 212);
+                doc.text('ACTIVIDADES REALIZADAS', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                // Actividades en caja compacta
+                doc.setFillColor(250, 250, 250);
+                doc.roundedRect(25, y, 160, 25, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(25, y, 160, 25, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(6, 182, 212);
+                doc.text('Actividad:', 30, y + 7);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(55, 65, 81);
+                const actividadText = doc.splitTextToSize(actividad_filial || 'No especificada', 140);
+                doc.text(actividadText, 30, y + 12);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(6, 182, 212);
+                doc.text('Proyecto:', 30, y + 18);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(55, 65, 81);
+                const proyectoText = doc.splitTextToSize(proyecto_filial || 'No especificado', 140);
+                doc.text(proyectoText, 30, y + 22);
+                
+                y += 35;
+                
+                // === RESUMEN ESTADÍSTICO DE MISIONEROS ===
+                
+                // Título de sección
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(6, 182, 212);
+                doc.text('RESUMEN ASISTENCIA DE MISIONEROS', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                // Estadísticas de misioneros
+                const totalMisioneros = misionerosAsistieron.length + misionerosNoAsistieron.length;
+                const porcentajeAsistencia = totalMisioneros > 0 ? Math.round((misionerosAsistieron.length / totalMisioneros) * 100) : 0;
+                
+                doc.setFillColor(250, 250, 250);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(20, y, 170, 15, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(6, 182, 212);
+                doc.text('Total: ' + totalMisioneros, 30, y + 7);
+                doc.setTextColor(21, 128, 61);
+                doc.text('Presentes: ' + misionerosAsistieron.length, 80, y + 7);
+                doc.setTextColor(185, 28, 28);
+                doc.text('Ausentes: ' + misionerosNoAsistieron.length, 130, y + 7);
+                doc.setTextColor(180, 83, 9);
+                doc.text('Asistencia: ' + porcentajeAsistencia + '%', 30, y + 12);
+                
+                y += 25;
+                
+                // === ACTIVIDAD DE LOS MISIONEROS ===
+                
+                // Título de sección
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(6, 182, 212);
+                doc.text('ACTIVIDAD DE LOS MISIONEROS', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                // Actividad en caja
+                doc.setFillColor(250, 250, 250);
+                doc.roundedRect(25, y, 160, 20, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(25, y, 160, 20, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                doc.setTextColor(55, 65, 81);
+                const actividadMisionerosText = doc.splitTextToSize(actividad_misioneros || 'No especificada', 150);
+                doc.text(actividadMisionerosText, 30, y + 8);
+                
+                // === PÁGINA 2: LISTADO DE MISIONEROS ===
+                
+                doc.addPage();
+                
+                // Header de segunda página
+                doc.setFillColor(6, 182, 212);
+                doc.rect(0, 0, 210, 25, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.setTextColor(255, 255, 255);
+                doc.text('LISTADO DETALLADO DE MISIONEROS', 105, 16, {align: 'center'});
+                
+                y = 35;
+                
+                // === MISIONEROS PRESENTES ===
+                
+                doc.setFillColor(240, 249, 255);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(8, 145, 178);
+                doc.text('MISIONEROS PRESENTES (' + misionerosAsistieron.length + ')', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                if (misionerosAsistieron.length > 0) {
+                    // Calcular altura necesaria para la lista
+                    const alturaPresentes = Math.min(misionerosAsistieron.length * 5 + 8, 80);
+                    
+                    doc.setFillColor(250, 250, 250);
+                    doc.roundedRect(25, y, 160, alturaPresentes, 4, 4, 'F');
+                    doc.setDrawColor(6, 182, 212);
+                    doc.setLineWidth(0.5);
+                    doc.roundedRect(25, y, 160, alturaPresentes, 4, 4, 'S');
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(8, 145, 178);
+                    
+                    let yPresentes = y + 6;
+                    misionerosAsistieron.forEach((misionero, idx) => {
+                        doc.text('✓ ' + misionero.nombre, 30, yPresentes);
+                        yPresentes += 5;
+                        
+                        // Si llegamos al final de la página, continuar en la siguiente
+                        if (yPresentes > 270 && idx < misionerosAsistieron.length - 1) {
+                            doc.addPage();
+                            doc.setFillColor(6, 182, 212);
+                            doc.rect(0, 0, 210, 20, 'F');
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(12);
+                            doc.setTextColor(255, 255, 255);
+                            doc.text('MISIONEROS PRESENTES (Continuación)', 105, 13, {align: 'center'});
+                            yPresentes = 30;
+                        }
+                    });
+                    
+                    y += alturaPresentes + 15;
+                } else {
+                    doc.setFillColor(249, 250, 251);
+                    doc.roundedRect(25, y, 160, 12, 4, 4, 'F');
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(107, 114, 128);
+                    doc.text('No hay misioneros presentes', 105, y + 8, {align: 'center'});
+                    y += 20;
+                }
+                
+                // === MISIONEROS AUSENTES ===
+                
+                doc.setFillColor(254, 242, 242);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'F');
+                doc.setDrawColor(239, 68, 68);
+                doc.setLineWidth(1);
+                doc.roundedRect(20, y, 170, 10, 4, 4, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.setTextColor(185, 28, 28);
+                doc.text('MISIONEROS AUSENTES (' + misionerosNoAsistieron.length + ')', 105, y + 7, {align: 'center'});
+                
+                y += 18;
+                
+                if (misionerosNoAsistieron.length > 0) {
+                    // Calcular altura necesaria para la lista
+                    const alturaAusentes = Math.min(misionerosNoAsistieron.length * 5 + 8, 80);
+                    
+                    doc.setFillColor(250, 250, 250);
+                    doc.roundedRect(25, y, 160, alturaAusentes, 4, 4, 'F');
+                    doc.setDrawColor(239, 68, 68);
+                    doc.setLineWidth(0.5);
+                    doc.roundedRect(25, y, 160, alturaAusentes, 4, 4, 'S');
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    doc.setTextColor(185, 28, 28);
+                    
+                    let yAusentes = y + 6;
+                    misionerosNoAsistieron.forEach((misionero, idx) => {
+                        doc.text('✗ ' + misionero.nombre, 30, yAusentes);
+                        yAusentes += 5;
+                        
+                        // Si llegamos al final de la página, continuar en la siguiente
+                        if (yAusentes > 270 && idx < misionerosNoAsistieron.length - 1) {
+                            doc.addPage();
+                            doc.setFillColor(6, 182, 212);
+                            doc.rect(0, 0, 210, 20, 'F');
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(12);
+                            doc.setTextColor(255, 255, 255);
+                            doc.text('MISIONEROS AUSENTES (Continuación)', 105, 13, {align: 'center'});
+                            yAusentes = 30;
+                        }
+                    });
+                    
+                    y += alturaAusentes + 15;
+                } else {
+                    doc.setFillColor(240, 249, 255);
+                    doc.roundedRect(25, y, 160, 12, 4, 4, 'F');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(10);
+                    doc.setTextColor(8, 145, 178);
+                    doc.text('¡EXCELENTE! Todos los misioneros asistieron', 105, y + 8, {align: 'center'});
+                    y += 20;
+                }
+                
+                // === FOOTER PROFESIONAL ===
+                
+                // Asegurar que el footer esté en la última página
+                if (y > 240) {
+                    doc.addPage();
+                    y = 30;
+                }
+                
+                // Línea decorativa
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.line(30, y, 180, y);
+                
+                y += 8;
+                
+                // Información del pie de página
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(107, 114, 128);
+                doc.text('Reporte generado el: ' + new Date().toLocaleDateString('es-ES'), 30, y);
+                doc.text('Sistema de Reportes Misioneros - Filial La Tekera', 30, y + 6);
+                
+                // Espacio para firma
+                doc.setFillColor(248, 250, 252);
+                doc.roundedRect(130, y - 5, 60, 18, 3, 3, 'F');
+                doc.setDrawColor(6, 182, 212);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(130, y - 5, 60, 18, 3, 3, 'S');
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7);
+                doc.setTextColor(6, 182, 212);
+                doc.text('FIRMA Y SELLO', 160, y + 2, {align: 'center'});
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6);
+                doc.setTextColor(107, 114, 128);
+                doc.text('Encargado del Grupo', 160, y + 7, {align: 'center'});
+                
+                // Guardar el PDF
+                const nombreArchivo = 'Reporte_LaTekera_' + fecha + '.pdf';
+                doc.save(nombreArchivo);
+                
+                ocultarCarga();
+                mostrarToast('PDF descargado exitosamente', 'success');
+                
+                // Resetear formulario después de la descarga
+                setTimeout(() => {
+                    form.reset();
+                    document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+                    actualizarEncargado();
+                    actualizarMisioneros();
+                    actualizarAsistenciaMisioneros();
+                    actualizarEstadisticas();
+                }, 1200);
+                
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                ocultarCarga();
+                mostrarToast('Error al generar el PDF: ' + error.message, 'error');
+            }
+        }
+        
+        // Establecer fecha automática
+        document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+        // Encargados por grupo
+        const encargados = {
+            'Grupo 1': 'Denis Mayora',
+            'Grupo 2': 'Cesar Cuchillas',
+            'Grupo 3': 'Damaris Mayora'
+        };
+        const grupoSelect = document.getElementById('grupo');
+        const encargadoInput = document.getElementById('encargado');
+        function actualizarEncargado() {
+            encargadoInput.value = encargados[grupoSelect.value] || '';
+        }
+        grupoSelect.addEventListener('change', actualizarEncargado);
+        // Listas de misioneros por grupo
+        const misionerosPorGrupo = {
+            'Grupo 1': [
+                'Denis Mayora', 'Maribel de Mayora', 'Alessandro Mayora', 'Jeremy Mayora', 'Mauricio Mejia', 'Brenda de Mejia', 'Belen Mejia', 'Kenneth Mejia', 'Neysi de Sandoval', 'Francisquito Sandoval','Josselin Mejia'
+            ],
+            'Grupo 2': [
+                'Cesar Cuchillas', 'Melissa de Cuchillas', 'Kevin Rodriguez', 'Vanessa de Rodriguez', 'Moises Rodriguez', 'Hazel Rodriguez', 'Angel Ayala'
+            ],
+            'Grupo 3': [
+                'Damaris Mayora', 'Joselito Nolasco', 'Anthony Nolasco', 'Ariadna Nolasco', 'Alvaro Leon', 'Alejandra de Leon', 'Maite Leon', 'Antonio Mayora', 'Genda de Yanez'
+            ]
+        };
+        function actualizarMisioneros() {
+            const grupo = grupoSelect.value;
+            const listaDiv = document.getElementById('listaMisioneros');
+            listaDiv.innerHTML = '';
+            misionerosPorGrupo[grupo].forEach(nombre => {
+                const item = document.createElement('div');
+                item.textContent = nombre;
+                item.style.padding = '4px 0 4px 12px';
+                item.style.fontSize = '1em';
+                item.style.color = '#222';
+                listaDiv.appendChild(item);
+            });
+        }
+        grupoSelect.addEventListener('change', () => {
+            actualizarEncargado();
+            actualizarMisioneros();
+        });
+        // Asistencia de misioneros
+        function actualizarAsistenciaMisioneros() {
+            const grupo = grupoSelect.value;
+            const contenedor = document.getElementById('asistenciaMisioneros');
+            contenedor.innerHTML = '';
+            misionerosPorGrupo[grupo].forEach((nombre, idx) => {
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.marginBottom = '8px';
+                div.style.padding = '8px';
+                div.style.background = '#f8fafc';
+                div.style.borderRadius = '6px';
+                div.style.border = '1px solid #e2e8f0';
+                
+                const nombreSpan = document.createElement('span');
+                nombreSpan.textContent = nombre;
+                nombreSpan.style.fontSize = '1em';
+                nombreSpan.style.color = '#222';
+                nombreSpan.style.width = '60%';
+                nombreSpan.style.fontWeight = '500';
+                
+                const checkboxContainer = document.createElement('div');
+                checkboxContainer.style.display = 'flex';
+                checkboxContainer.style.alignItems = 'center';
+                checkboxContainer.style.marginLeft = '12px';
+                checkboxContainer.style.width = '40%';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = `asistencia_misionero_${idx}`;
+                checkbox.id = `checkbox_${idx}`;
+                checkbox.style.width = '18px';
+                checkbox.style.height = '18px';
+                checkbox.style.marginRight = '8px';
+                checkbox.style.accentColor = '#06b6d4';
+                checkbox.style.cursor = 'pointer';
+                
+                const label = document.createElement('label');
+                label.htmlFor = `checkbox_${idx}`;
+                label.textContent = 'Asistió';
+                label.style.fontSize = '0.9em';
+                label.style.color = '#374151';
+                label.style.cursor = 'pointer';
+                label.style.userSelect = 'none';
+                
+                checkboxContainer.appendChild(checkbox);
+                checkboxContainer.appendChild(label);
+                div.appendChild(nombreSpan);
+                div.appendChild(checkboxContainer);
+                contenedor.appendChild(div);
+            });
+        }
+        grupoSelect.addEventListener('change', () => {
+            actualizarEncargado();
+            actualizarMisioneros();
+            actualizarAsistenciaMisioneros();
+        });
+        // Función para actualizar totales de asistencia
+        function actualizarTotalesAsistencia() {
+            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+            let asistieron = 0;
+            let noAsistieron = 0;
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    asistieron++;
+                } else {
+                    noAsistieron++;
+                }
+            });
+            // Solo actualizar estadísticas, sin campos específicos
+            actualizarEstadisticas();
+        }
+        // Actualizar totales al cambiar cualquier checkbox de asistencia
+        function addAsistenciaListeners() {
+            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', actualizarTotalesAsistencia);
+            });
+        }
+        grupoSelect.addEventListener('change', () => {
+            actualizarEncargado();
+            actualizarMisioneros();
+            actualizarAsistenciaMisioneros();
+            setTimeout(addAsistenciaListeners, 0);
+            setTimeout(actualizarTotalesAsistencia, 0);
+        });
+        
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('historialModal');
+            if (event.target == modal) {
+                cerrarHistorial();
+            }
+        }
+        
+        // INICIALIZACIÓN
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar tema
+            cargarTema();
+            
+            // Inicializar encargado, misioneros y asistencia al cargar
+            actualizarEncargado();
+            actualizarMisioneros();
+            actualizarAsistenciaMisioneros();
+            addAsistenciaListeners();
+            actualizarTotalesAsistencia();
+            actualizarEstadisticas();
+            agregarEventosEstadisticas();
+            
+            // Mostrar bienvenida
+            setTimeout(() => {
+                mostrarToast('¡Bienvenido al sistema de reportes de La Tekera!', 'success');
+            }, 500);
+        });
+        
+        // Eventos de entrada para actualizar estadísticas en tiempo real
+        function agregarEventosEstadisticas() {
+            const inputs = document.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('change', actualizarEstadisticas);
+                input.addEventListener('input', actualizarEstadisticas);
+            });
+        }
+    </script>
+</body>
+</html>

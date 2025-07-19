@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo - Sistema de Reportes Misioneros</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+    <script src="export-utils.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+        
+        body.dark-theme {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        
+        body.dark-theme .header {
+            background: rgba(45, 55, 72, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        
+        body.dark-theme .header h1 {
+            color: #f7fafc;
+        }
+        
+        .subtitle {
+            color: #4a5568;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        
+        body.dark-theme .subtitle {
+            color: #a0aec0;
+        }
+        
+        .nav-controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .nav-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+        
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        body.dark-theme .stat-card {
+            background: rgba(45, 55, 72, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-icon {
+            font-size: 1.5em;
+        }
+        
+        .stat-title {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        body.dark-theme .stat-title {
+            color: #a0aec0;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 800;
+            color: #2563eb;
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+        
+        body.dark-theme .stat-label {
+            color: #a0aec0;
+        }
+        
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .action-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 28px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        body.dark-theme .action-card {
+            background: rgba(45, 55, 72, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .action-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2);
+        }
+        
+        .action-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        body.dark-theme .action-title {
+            color: #f7fafc;
+        }
+        
+        .action-description {
+            color: #4a5568;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        body.dark-theme .action-description {
+            color: #a0aec0;
+        }
+        
+        .action-btn {
+            background: #667eea;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .action-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-btn.secondary {
+            background: #6b7280;
+        }
+        
+        .action-btn.secondary:hover {
+            background: #4b5563;
+        }
+        
+        .action-btn.danger {
+            background: #dc2626;
+        }
+        
+        .action-btn.danger:hover {
+            background: #b91c1c;
+        }
+        
+        .branch-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .branch-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        body.dark-theme .branch-card {
+            background: rgba(45, 55, 72, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .branch-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .branch-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .branch-name {
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 1.1em;
+        }
+        
+        body.dark-theme .branch-name {
+            color: #f7fafc;
+        }
+        
+        .branch-stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        body.dark-theme .modal-content {
+            background: #2d3748;
+            color: #f7fafc;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        
+        .close:hover {
+            color: #dc2626;
+        }
+        
+        .filter-section {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        body.dark-theme .filter-section {
+            background: #374151;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-row label {
+            font-weight: 600;
+            min-width: 100px;
+        }
+        
+        .filter-row select, .filter-row input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        body.dark-theme .filter-row select,
+        body.dark-theme .filter-row input {
+            background: #4b5563;
+            border-color: #6b7280;
+            color: #f7fafc;
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+        
+        body.dark-theme .checkbox-item {
+            background: #374151;
+        }
+        
+        .file-input {
+            margin: 16px 0;
+            padding: 12px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            text-align: center;
+            background: #f8fafc;
+        }
+        
+        body.dark-theme .file-input {
+            border-color: #6b7280;
+            background: #374151;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .recent-activity {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        body.dark-theme .recent-activity {
+            background: rgba(45, 55, 72, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        body.dark-theme .activity-item {
+            border-bottom-color: #4b5563;
+        }
+        
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .stats-overview {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .actions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .branch-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Panel Administrativo</h1>
+            <div class="subtitle">Gestión centralizada del sistema de reportes misioneros</div>
+            <div class="nav-controls">
+                <a href="index.html" class="nav-btn">🏠 Inicio</a>
+                <button class="nav-btn" id="theme-toggle">🌙 Tema</button>
+                <button class="nav-btn" onclick="mostrarModalBackup()">💾 Backup</button>
+                <button class="nav-btn" onclick="actualizarEstadisticas()">🔄 Actualizar</button>
+            </div>
+        </div>
+
+        <!-- Estadísticas generales -->
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">📊</span>
+                    <span class="stat-title">Total Reportes</span>
+                </div>
+                <div class="stat-value" id="total-reports">0</div>
+                <div class="stat-label">Todos los tiempos</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">📅</span>
+                    <span class="stat-title">Hoy</span>
+                </div>
+                <div class="stat-value" id="today-reports">0</div>
+                <div class="stat-label">Reportes de hoy</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">📈</span>
+                    <span class="stat-title">Esta Semana</span>
+                </div>
+                <div class="stat-value" id="week-reports">0</div>
+                <div class="stat-label">Últimos 7 días</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">⛪</span>
+                    <span class="stat-title">Filiales Activas</span>
+                </div>
+                <div class="stat-value" id="active-branches">3</div>
+                <div class="stat-label">Filiales registradas</div>
+            </div>
+        </div>
+
+        <!-- Estadísticas por filial -->
+        <div class="branch-stats" id="branch-stats">
+            <!-- Se llenarán dinámicamente -->
+        </div>
+
+        <!-- Acciones principales -->
+        <div class="actions-grid">
+            <div class="action-card">
+                <div class="action-title">📤 Exportación de Datos</div>
+                <div class="action-description">
+                    Exporta reportes y estadísticas en diferentes formatos para análisis externo.
+                </div>
+                <button class="action-btn" onclick="mostrarModalExportar()">📄 Exportar PDF</button>
+                <button class="action-btn" onclick="mostrarModalExportar('excel')">📊 Exportar Excel</button>
+                <button class="action-btn secondary" onclick="exportarResumen()">📋 Resumen General</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="action-title">🔧 Mantenimiento</div>
+                <div class="action-description">
+                    Herramientas para el mantenimiento y optimización del sistema.
+                </div>
+                <button class="action-btn" onclick="limpiarDatosAntiguos()">🧹 Limpiar Datos Antiguos</button>
+                <button class="action-btn secondary" onclick="verificarIntegridad()">🔍 Verificar Integridad</button>
+                <button class="action-btn danger" onclick="resetearSistema()">⚠️ Resetear Sistema</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="action-title">📋 Gestión de Datos</div>
+                <div class="action-description">
+                    Administra borradores, historial y configuraciones del sistema.
+                </div>
+                <button class="action-btn" onclick="gestionarBorradores()">📝 Gestionar Borradores</button>
+                <button class="action-btn" onclick="verHistorialCompleto()">📚 Historial Completo</button>
+                <button class="action-btn secondary" onclick="configurarSistema()">⚙️ Configuración</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="action-title">📊 Análisis y Reportes</div>
+                <div class="action-description">
+                    Genera análisis detallados y reportes personalizados.
+                </div>
+                <button class="action-btn" onclick="generarAnalisis()">📈 Análisis Avanzado</button>
+                <button class="action-btn" onclick="compararPeriodos()">⚖️ Comparar Períodos</button>
+                <button class="action-btn secondary" onclick="exportarDashboard()">🎯 Dashboard PDF</button>
+            </div>
+        </div>
+
+        <!-- Actividad reciente -->
+        <div class="recent-activity">
+            <h3 style="margin-bottom: 20px; color: #2d3748;">📋 Actividad Reciente</h3>
+            <div id="recent-activity-list">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Exportación -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="export-modal-title">📤 Exportar Datos</h2>
+                <span class="close" onclick="cerrarModal('exportModal')">&times;</span>
+            </div>
+            
+            <div class="filter-section">
+                <h4>🔍 Filtros de Exportación</h4>
+                <div class="filter-row">
+                    <label>Período:</label>
+                    <select id="period-filter">
+                        <option value="all">Todos los tiempos</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta semana</option>
+                        <option value="month">Este mes</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                </div>
+                
+                <div class="filter-row" id="custom-date-range" style="display: none;">
+                    <label>Desde:</label>
+                    <input type="date" id="date-from">
+                    <label>Hasta:</label>
+                    <input type="date" id="date-to">
+                </div>
+            </div>
+            
+            <div>
+                <h4>🏛️ Seleccionar Filiales</h4>
+                <div class="checkbox-group" id="branch-checkboxes">
+                    <!-- Se llenarán dinámicamente -->
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                <button class="action-btn" onclick="ejecutarExportacion('pdf')" style="flex: 1;">📄 PDF</button>
+                <button class="action-btn" onclick="ejecutarExportacion('excel')" style="flex: 1;">📊 Excel</button>
+            </div>
+            
+            <div class="loading" id="export-loading">
+                <div class="loading-spinner"></div>
+                <p>Generando exportación...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Backup -->
+    <div id="backupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💾 Gestión de Backup</h2>
+                <span class="close" onclick="cerrarModal('backupModal')">&times;</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>📤 Crear Backup</h4>
+                <p style="color: #6b7280; margin-bottom: 12px;">
+                    Descarga una copia de seguridad completa de todos los datos.
+                </p>
+                <button class="action-btn" onclick="crearBackup()">💾 Crear Backup Completo</button>
+            </div>
+            
+            <div>
+                <h4>📥 Restaurar Backup</h4>
+                <p style="color: #6b7280; margin-bottom: 12px;">
+                    Sube un archivo de backup para restaurar los datos.
+                </p>
+                <div class="file-input">
+                    <input type="file" id="backup-file" accept=".json" style="display: none;">
+                    <button class="action-btn secondary" onclick="document.getElementById('backup-file').click()">
+                        📁 Seleccionar Archivo
+                    </button>
+                    <p id="selected-file" style="margin-top: 8px; color: #6b7280;"></p>
+                </div>
+                <button class="action-btn" onclick="restaurarBackup()" id="restore-btn" disabled>
+                    📥 Restaurar Backup
+                </button>
+            </div>
+            
+            <div class="loading" id="backup-loading">
+                <div class="loading-spinner"></div>
+                <p>Procesando backup...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            // Aplicar tema guardado
+            const savedTheme = Utils.getStorageItem(CONFIG.storage.themeKey) || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                document.getElementById('theme-toggle').textContent = '☀️ Tema';
+            }
+
+            // Configurar toggle de tema
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+            // Configurar archivo de backup
+            document.getElementById('backup-file').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    document.getElementById('selected-file').textContent = `Archivo seleccionado: ${file.name}`;
+                    document.getElementById('restore-btn').disabled = false;
+                } else {
+                    document.getElementById('selected-file').textContent = '';
+                    document.getElementById('restore-btn').disabled = true;
+                }
+            });
+
+            // Configurar filtro de período
+            document.getElementById('period-filter').addEventListener('change', function(e) {
+                const customRange = document.getElementById('custom-date-range');
+                if (e.target.value === 'custom') {
+                    customRange.style.display = 'flex';
+                } else {
+                    customRange.style.display = 'none';
+                }
+            });
+
+            // Inicializar datos
+            cargarEstadisticasFiliales();
+            actualizarEstadisticas();
+            cargarActividadReciente();
+            
+            // Inicializar navegación global
+            if (typeof Navigation !== 'undefined') {
+                Navigation.init();
+            }
+        });
+
+        // Funciones de tema
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            const toggle = document.getElementById('theme-toggle');
+            toggle.textContent = isDark ? '☀️ Tema' : '🌙 Tema';
+            Utils.setStorageItem(CONFIG.storage.themeKey, isDark ? 'dark' : 'light');
+        }
+
+        // Funciones de estadísticas
+        function actualizarEstadisticas() {
+            if (typeof ExportUtilities === 'undefined') {
+                console.error('ExportUtilities no disponible');
+                return;
+            }
+
+            const stats = ExportUtilities.getGeneralStats();
+            
+            document.getElementById('total-reports').textContent = stats.total;
+            document.getElementById('today-reports').textContent = stats.today;
+            document.getElementById('week-reports').textContent = stats.thisWeek;
+            
+            cargarEstadisticasFiliales();
+            
+            NotificationSystem.success('Estadísticas actualizadas');
+        }
+
+        function cargarEstadisticasFiliales() {
+            if (typeof ExportUtilities === 'undefined') return;
+
+            const stats = ExportUtilities.getGeneralStats();
+            const container = document.getElementById('branch-stats');
+            
+            container.innerHTML = '';
+            
+            Object.keys(CONFIG.branches).forEach(branchId => {
+                const branchConfig = CONFIG.branches[branchId];
+                const branchStats = stats.byBranch[branchId];
+                
+                const card = document.createElement('div');
+                card.className = 'branch-card';
+                card.innerHTML = `
+                    <div class="branch-header">
+                        <img src="${branchConfig.logo}" alt="${branchConfig.name}" class="branch-logo">
+                        <div class="branch-name">${branchConfig.name}</div>
+                    </div>
+                    <div class="branch-stat-item">
+                        <span>Total:</span>
+                        <span><strong>${branchStats.total}</strong></span>
+                    </div>
+                    <div class="branch-stat-item">
+                        <span>Hoy:</span>
+                        <span><strong>${branchStats.today}</strong></span>
+                    </div>
+                    <div class="branch-stat-item">
+                        <span>Esta semana:</span>
+                        <span><strong>${branchStats.thisWeek}</strong></span>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button class="action-btn" onclick="window.location.href='${CONFIG.urls.branches[branchId]}'" style="font-size: 0.9em; padding: 8px 16px;">
+                            📝 Ir a Formulario
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+
+            // Crear checkboxes para exportación
+            const checkboxContainer = document.getElementById('branch-checkboxes');
+            if (checkboxContainer) {
+                checkboxContainer.innerHTML = '';
+                
+                Object.keys(CONFIG.branches).forEach(branchId => {
+                    const branchConfig = CONFIG.branches[branchId];
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'checkbox-item';
+                    checkbox.innerHTML = `
+                        <input type="checkbox" id="export-${branchId}" value="${branchId}" checked>
+                        <label for="export-${branchId}">${branchConfig.name}</label>
+                    `;
+                    checkboxContainer.appendChild(checkbox);
+                });
+            }
+        }
+
+        function cargarActividadReciente() {
+            if (typeof ExportUtilities === 'undefined') return;
+
+            const allReports = ExportUtilities.getAllReports();
+            const recentReports = allReports.slice(0, 5);
+            const container = document.getElementById('recent-activity-list');
+            
+            if (recentReports.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay actividad reciente</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            recentReports.forEach(report => {
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${report.filial}</strong> - ${report.responsable || 'Sin responsable'}
+                        <br>
+                        <small style="color: #6b7280;">
+                            Visitantes: ${report.visitantes || 0} | Conversiones: ${report.conversiones || 0}
+                        </small>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600;">${report.fecha}</div>
+                        <small style="color: #6b7280;">${report.hora || ''}</small>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Funciones de modal
+        function mostrarModalExportar(tipo = 'pdf') {
+            document.getElementById('export-modal-title').textContent = 
+                tipo === 'excel' ? '📊 Exportar Excel' : '📤 Exportar PDF';
+            document.getElementById('exportModal').style.display = 'flex';
+        }
+
+        function mostrarModalBackup() {
+            document.getElementById('backupModal').style.display = 'flex';
+        }
+
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Funciones de exportación
+        async function ejecutarExportacion(tipo) {
+            if (typeof ExportUtilities === 'undefined') {
+                NotificationSystem.error('Sistema de exportación no disponible');
+                return;
+            }
+
+            const loading = document.getElementById('export-loading');
+            loading.style.display = 'block';
+
+            try {
+                // Obtener filtros
+                const selectedBranches = Array.from(document.querySelectorAll('#branch-checkboxes input:checked'))
+                    .map(cb => cb.value);
+                
+                if (selectedBranches.length === 0) {
+                    throw new Error('Debe seleccionar al menos una filial');
+                }
+
+                const period = document.getElementById('period-filter').value;
+                let allReports = ExportUtilities.getAllReports();
+
+                // Aplicar filtros de filial
+                if (selectedBranches.length < Object.keys(CONFIG.branches).length) {
+                    allReports = allReports.filter(report => selectedBranches.includes(report.filialId));
+                }
+
+                // Aplicar filtros de fecha
+                if (period !== 'all') {
+                    allReports = filtrarPorPeriodo(allReports, period);
+                }
+
+                const options = {
+                    title: `Reporte ${tipo.toUpperCase()} - ${new Date().toLocaleDateString()}`,
+                    branchFilter: selectedBranches.length === Object.keys(CONFIG.branches).length ? 'todas' : selectedBranches.join(','),
+                    dateRange: period === 'custom' ? {
+                        start: document.getElementById('date-from').value,
+                        end: document.getElementById('date-to').value
+                    } : null
+                };
+
+                let filename;
+                if (tipo === 'pdf') {
+                    filename = await ExportUtilities.exportToPDF(allReports, options);
+                } else {
+                    filename = await ExportUtilities.exportToExcel(allReports, options);
+                }
+
+                NotificationSystem.success(`Archivo ${filename} descargado correctamente`);
+                cerrarModal('exportModal');
+
+            } catch (error) {
+                console.error('Error en exportación:', error);
+                NotificationSystem.error('Error al generar la exportación: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function filtrarPorPeriodo(reports, period) {
+            const today = new Date();
+            const todayStr = Utils.formatDate(today);
+
+            switch (period) {
+                case 'today':
+                    return reports.filter(r => r.fecha === todayStr);
+                
+                case 'week':
+                    return reports.filter(r => ExportUtilities.isInCurrentWeek(r.fecha));
+                
+                case 'month':
+                    const thisMonth = today.getMonth();
+                    const thisYear = today.getFullYear();
+                    return reports.filter(r => {
+                        const reportDate = new Date(r.fecha.split('/').reverse().join('-'));
+                        return reportDate.getMonth() === thisMonth && reportDate.getFullYear() === thisYear;
+                    });
+                
+                case 'custom':
+                    const fromDate = new Date(document.getElementById('date-from').value);
+                    const toDate = new Date(document.getElementById('date-to').value);
+                    return reports.filter(r => {
+                        const reportDate = new Date(r.fecha.split('/').reverse().join('-'));
+                        return reportDate >= fromDate && reportDate <= toDate;
+                    });
+                
+                default:
+                    return reports;
+            }
+        }
+
+        // Funciones de backup
+        async function crearBackup() {
+            if (typeof ExportUtilities === 'undefined') {
+                NotificationSystem.error('Sistema de backup no disponible');
+                return;
+            }
+
+            const loading = document.getElementById('backup-loading');
+            loading.style.display = 'block';
+
+            try {
+                const filename = ExportUtilities.exportBackup();
+                NotificationSystem.success(`Backup creado: ${filename}`);
+                cerrarModal('backupModal');
+            } catch (error) {
+                console.error('Error creando backup:', error);
+                NotificationSystem.error('Error al crear backup: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function restaurarBackup() {
+            if (typeof ExportUtilities === 'undefined') {
+                NotificationSystem.error('Sistema de backup no disponible');
+                return;
+            }
+
+            const fileInput = document.getElementById('backup-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                NotificationSystem.error('Debe seleccionar un archivo');
+                return;
+            }
+
+            const loading = document.getElementById('backup-loading');
+            loading.style.display = 'block';
+
+            try {
+                const result = await ExportUtilities.importBackup(file);
+                
+                if (result.success) {
+                    NotificationSystem.success(result.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    NotificationSystem.warning(result.message);
+                }
+                
+                cerrarModal('backupModal');
+            } catch (error) {
+                console.error('Error restaurando backup:', error);
+                NotificationSystem.error('Error al restaurar backup: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Funciones adicionales
+        function exportarResumen() {
+            mostrarModalExportar('pdf');
+        }
+
+        function limpiarDatosAntiguos() {
+            if (typeof ExportUtilities === 'undefined') {
+                NotificationSystem.error('Sistema no disponible');
+                return;
+            }
+
+            if (confirm('¿Desea eliminar reportes anteriores a 1 año? Esta acción no se puede deshacer.')) {
+                const cleaned = ExportUtilities.cleanOldData(365);
+                NotificationSystem.success(`Se eliminaron ${cleaned} reportes antiguos`);
+                actualizarEstadisticas();
+            }
+        }
+
+        function verificarIntegridad() {
+            // Verificar integridad de datos
+            let errores = 0;
+            const branches = Object.keys(CONFIG.branches);
+            
+            branches.forEach(branchId => {
+                try {
+                    const history = Utils.getStorageItem(`${branchId}_history`);
+                    if (history && !Array.isArray(history)) {
+                        errores++;
+                    }
+                } catch (e) {
+                    errores++;
+                }
+            });
+
+            if (errores === 0) {
+                NotificationSystem.success('Integridad de datos verificada correctamente');
+            } else {
+                NotificationSystem.warning(`Se encontraron ${errores} posibles problemas en los datos`);
+            }
+        }
+
+        function resetearSistema() {
+            if (confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS los datos del sistema. ¿Está absolutamente seguro?')) {
+                if (confirm('Esta acción NO se puede deshacer. ¿Confirma que desea continuar?')) {
+                    Utils.clearAppStorage();
+                    NotificationSystem.success('Sistema reseteado correctamente');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            }
+        }
+
+        function gestionarBorradores() {
+            // Redirigir a una página específica o abrir modal
+            NotificationSystem.info('Funcionalidad en desarrollo');
+        }
+
+        function verHistorialCompleto() {
+            // Abrir vista de historial completo
+            NotificationSystem.info('Funcionalidad en desarrollo');
+        }
+
+        function configurarSistema() {
+            // Abrir configuración
+            NotificationSystem.info('Funcionalidad en desarrollo');
+        }
+
+        function generarAnalisis() {
+            // Generar análisis avanzado
+            NotificationSystem.info('Análisis avanzado en desarrollo');
+        }
+
+        function compararPeriodos() {
+            // Comparar períodos
+            NotificationSystem.info('Comparación de períodos en desarrollo');
+        }
+
+        function exportarDashboard() {
+            // Exportar dashboard como PDF
+            NotificationSystem.info('Export de dashboard en desarrollo');
+        }
+
+        // Cerrar modales con ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        });
+
+        // Cerrar modal al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
