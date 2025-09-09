@@ -275,6 +275,38 @@
             background: #64748b;
             color: #fff;
         }
+        
+        /* Grupo de botones */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .button-group button {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        #btnEnviarWhatsApp {
+            background: linear-gradient(90deg, #25d366 0%, #128c7e 100%);
+        }
+        
+        #btnEnviarWhatsApp:hover {
+            background: linear-gradient(90deg, #128c7e 0%, #25d366 100%);
+        }
+        
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .button-group button {
+                min-width: 100%;
+            }
+        }
+        
         .misioneros-lista {
             background: #f1f5f9;
             border-radius: 7px;
@@ -578,9 +610,14 @@
                 <label style="margin-top:18px;">Actividad realizada por los misioneros:</label>
                 <input type="text" name="actividad_misioneros" id="actividad_misioneros" required>
             </fieldset>
-            <button type="button" id="btnDescargarPDF" onclick="descargarReportePDF()">
-                📄 Descargar PDF
-            </button>
+            <div class="button-group">
+                <button type="button" id="btnDescargarPDF" onclick="descargarReportePDF()">
+                    📄 Descargar PDF
+                </button>
+                <button type="button" id="btnEnviarWhatsApp" onclick="enviarPorWhatsApp()">
+                    📱 Enviar por WhatsApp
+                </button>
+            </div>
         </form>
         <button class="volver" onclick="location.href='index.html'">Volver al inicio</button>
     </div>
@@ -1305,6 +1342,84 @@
                 ocultarCarga();
                 mostrarToast('Error al generar el PDF: ' + error.message, 'error');
             }
+        }
+        
+        // --- Función para enviar por WhatsApp ---
+        function enviarPorWhatsApp() {
+            if (!validarFormulario()) return;
+            
+            const form = document.getElementById('formElSauce');
+            const data = new FormData(form);
+            
+            // Recopilar datos del formulario
+            const fecha = data.get('fecha');
+            const grupo = data.get('grupo');
+            const encargado = data.get('encargado');
+            const asistencia_adultos = data.get('asistencia_adultos');
+            const asistencia_ninos = data.get('asistencia_ninos');
+            const actividad_filial = data.get('actividad_filial');
+            const proyecto_filial = data.get('proyecto_filial') || 'No especificado';
+            const actividad_misioneros = data.get('actividad_misioneros');
+            
+            // Obtener asistencia detallada de misioneros
+            const misioneros = misionerosPorGrupo[grupo];
+            const checkboxes = document.querySelectorAll('#asistenciaMisioneros input[type="checkbox"]');
+            const asistenciaMisioneros = [];
+            
+            checkboxes.forEach((checkbox, idx) => {
+                asistenciaMisioneros.push({
+                    nombre: misioneros[idx],
+                    asistencia: checkbox.checked
+                });
+            });
+            
+            // Separar misioneros por asistencia
+            const misionerosAsistieron = asistenciaMisioneros.filter(m => m.asistencia).map(m => m.nombre);
+            const misionerosNoAsistieron = asistenciaMisioneros.filter(m => !m.asistencia).map(m => m.nombre);
+            
+            // Crear listas formateadas
+            const listaAsistieron = misionerosAsistieron.length > 0 ? 
+                misionerosAsistieron.map(nombre => `✅ ${nombre}`).join('\n') : 
+                'Ninguno';
+            
+            const listaNoAsistieron = misionerosNoAsistieron.length > 0 ? 
+                misionerosNoAsistieron.map(nombre => `❌ ${nombre}`).join('\n') : 
+                'Ninguno';
+            
+            // Crear mensaje para WhatsApp
+            const mensaje = `🌿 *REPORTE MISIONERO - FILIAL EL SAUCE*
+📅 *Fecha:* ${fecha}
+👥 *Grupo:* ${grupo}
+👤 *Encargado:* ${encargado}
+
+📊 *ASISTENCIA*
+👨‍👩‍👧‍👦 Adultos: ${asistencia_adultos}
+👶 Niños: ${asistencia_ninos}
+🙋‍♀️ Misioneros: ${misionerosAsistieron.length}/${misioneros.length}
+
+👥 *MISIONEROS QUE ASISTIERON:*
+${listaAsistieron}
+
+❌ *MISIONEROS QUE NO ASISTIERON:*
+${listaNoAsistieron}
+
+📋 *ACTIVIDADES*
+🌿 *Actividad Filial:* ${actividad_filial}
+🎯 *Proyecto Filial:* ${proyecto_filial}
+👥 *Actividad Misioneros:* ${actividad_misioneros}
+
+---
+*Sistema de Reportes Misioneros v2.0*`;
+
+            // Codificar mensaje para URL
+            const mensajeCodificado = encodeURIComponent(mensaje);
+            const numeroWhatsApp = '50470122548'; // Número sin espacios ni guiones
+            const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensajeCodificado}`;
+            
+            // Abrir WhatsApp
+            window.open(urlWhatsApp, '_blank');
+            
+            mostrarToast('Abriendo WhatsApp...', 'success');
         }
         
         // Establecer fecha automática
